@@ -1,5 +1,6 @@
 package cn.bearever.sedesliplayout.widget;
 
+import android.animation.Animator;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
@@ -454,7 +455,7 @@ public class SideslipLayout extends FrameLayout {
         animate.setDuration(mAnimateTime);
         animate.start();
         animate.addUpdateListener(updateListener);
-
+        animate.addListener(animationListener);
         //正在显示侧滑菜单
         isShowingSide = true;
     }
@@ -513,6 +514,7 @@ public class SideslipLayout extends FrameLayout {
         animate.setDuration(mAnimateTime);
         animate.start();
         animate.addUpdateListener(updateListener);
+        animate.addListener(animationListener);
 
         //隐藏侧滑菜单
         isShowingSide = false;
@@ -547,6 +549,33 @@ public class SideslipLayout extends FrameLayout {
                     break;
                 }
             }
+        }
+    };
+
+    private Animator.AnimatorListener animationListener = new Animator.AnimatorListener() {
+        @Override
+        public void onAnimationStart(Animator animation) {
+
+        }
+
+        @Override
+        public void onAnimationEnd(Animator animation) {
+            if (mListener != null) {
+                if (isShowingSide) {
+                    mListener.onShow(mMoveSide);
+                } else
+                    mListener.onHide(mMoveSide);
+            }
+        }
+
+        @Override
+        public void onAnimationCancel(Animator animation) {
+
+        }
+
+        @Override
+        public void onAnimationRepeat(Animator animation) {
+
         }
     };
 
@@ -591,4 +620,28 @@ public class SideslipLayout extends FrameLayout {
 
     }
 
+    public boolean isCanHideSideView() {
+        return canHideSideView;
+    }
+
+    public void setCanHideSideView(boolean canHideSideView) {
+        this.canHideSideView = canHideSideView;
+    }
+
+    private OnSideslipListener mListener;
+
+    public void setOnSideslipListener(OnSideslipListener mListener) {
+        this.mListener = mListener;
+    }
+
+    /**
+     * 侧滑状态回掉函数
+     */
+    public interface OnSideslipListener {
+        //侧滑菜单显示
+        void onShow(int gravity);
+
+        //侧滑菜单隐藏
+        void onHide(int gravity);
+    }
 }
