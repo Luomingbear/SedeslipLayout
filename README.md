@@ -3,7 +3,7 @@
 更加全面的侧滑菜单控件，支持上下左右四个方向的侧滑菜单，还可以自由设定显示的大小比例。
 
 ## 效果图
-
+<img src="https://github.com/Luomingbear/SedeslipLayout/blob/master/show.gif"></img>
 
 ## 使用方法
 
