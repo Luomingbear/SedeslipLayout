@@ -2,15 +2,16 @@
 
 更加全面的侧滑菜单控件，支持上下左右四个方向的侧滑菜单，还可以自由设定显示的大小比例。
 
+## 效果图
 
 
 ## 使用方法
 
-- 引用
+- **引用**
 
   在布局文件里面引用<code>SideslipLayout</code>
 
-- 相关方法
+- **相关方法**
 
   <code>get/setHomeView()</code>获取/设置主界面View；
   
@@ -22,7 +23,7 @@
   
   <code>get/setBottomViewItem()</code>获取/设置底部的侧滑菜单；
   
-- SideslipViewItem类
+- **SideslipViewItem类**
 ``` java
 public class SideslipViewItem {
     private View layout; //View视图
