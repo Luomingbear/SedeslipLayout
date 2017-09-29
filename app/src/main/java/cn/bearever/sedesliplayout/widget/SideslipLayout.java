@@ -5,6 +5,7 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Color;
 import android.support.annotation.AttrRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -14,7 +15,9 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AccelerateInterpolator;
 import android.view.animation.BounceInterpolator;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 
 import cn.bearever.sedesliplayout.R;
@@ -32,13 +35,14 @@ public class SideslipLayout extends FrameLayout {
     private SideslipViewItem mRightViewItem; //右边需要显示的viewItem
     private SideslipViewItem mBottomViewItem; //下面需要显示的viewItem
     private View mHomeView; //主界面
+    private View mShadeView; //阴影view
     private int mWidth; //宽度
     private int mHeight; //高度
     private boolean isShowingSide = false; //是否正在显示侧滑菜单
     private boolean isAnimateShowingSide = false; //是否执行显示侧滑菜单的动画 true :显示策划菜单,false ：隐藏侧滑菜单
-    private int mAnimateTime = 350; //动画时间 ms
+    private int mAnimateTime = 280; //动画时间 ms
 
-    private int mMoveSide = Gravity.LEFT; //移动的侧边菜单是哪一面
+    private int mMoveSide = 0; //移动的侧边菜单是哪一面
     private boolean canHideSideView = true; //是否可以通过手势滑动关闭侧滑菜单
 
     public SideslipLayout(@NonNull Context context) {
@@ -82,6 +86,9 @@ public class SideslipLayout extends FrameLayout {
             mHomeView.layout(0, 0, mWidth, mHeight);
         }
 
+        //添加阴影view
+        addShadeView();
+
         //加入左边的界面
         addItemView(mLeftViewItem, Gravity.LEFT);
 
@@ -95,6 +102,20 @@ public class SideslipLayout extends FrameLayout {
         addItemView(mBottomViewItem, Gravity.BOTTOM);
 
         Log.i(TAG, "onLayout: count:" + getChildCount());
+    }
+
+    /**
+     * 加入阴影View
+     */
+    private void addShadeView() {
+        mShadeView = new View(getContext());
+        ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        mShadeView.setLayoutParams(params);
+        //设置阴影颜色
+        mShadeView.setBackgroundColor(Color.parseColor("#b5353535"));
+        addView(mShadeView);
+        mShadeView.layout(0, 0, mWidth, mHeight);
+        setShadeViewAlpha(0);
     }
 
     /**
@@ -239,7 +260,7 @@ public class SideslipLayout extends FrameLayout {
                  * 计算手指抬起的位置，判断是否应该显示或者隐藏侧滑菜单
                  */
                 if (computeIsShowSide(event.getX(), event.getY()))
-                    animateShowSideView(event.getX(), event.getY(), mMoveSide);
+                    animateShowSideView(mMoveSide);
                 else
                     animateHideSideView(event.getX(), event.getY(), mMoveSide);
 
@@ -272,7 +293,7 @@ public class SideslipLayout extends FrameLayout {
     private void touchMoveViews(float moveX, float moveY) {
         if (mTouchStartX < mWidth / 4) {
             if (Math.abs(moveX) > Math.abs(moveY)) {
-                if (mMoveSide != Gravity.LEFT && !isShowingSide) {
+                if (!isShowingSide) {
                     mMoveSide = Gravity.LEFT;
                     moveLeftView(moveX);
 
@@ -280,14 +301,14 @@ public class SideslipLayout extends FrameLayout {
             }
         } else if (mTouchStartX > mWidth / 4.0f * 3) {
             if (Math.abs(moveX) > Math.abs(moveY)) {
-                if (mMoveSide != Gravity.RIGHT && !isShowingSide) {
+                if (!isShowingSide) {
                     mMoveSide = Gravity.RIGHT;
                     moveRightView(moveX);
                 }
             }
         } else if (mTouchStartY < mHeight / 4) {
             if (Math.abs(moveY) > Math.abs(moveX)) {
-                if (mMoveSide != Gravity.TOP && !isShowingSide) {
+                if (!isShowingSide) {
                     mMoveSide = Gravity.TOP;
                     moveTopView(moveY);
 
@@ -295,7 +316,7 @@ public class SideslipLayout extends FrameLayout {
             }
         } else if (mTouchStartY > mHeight / 4f * 3) {
             if (Math.abs(moveY) > Math.abs(moveX)) {
-                if (mMoveSide != Gravity.BOTTOM && !isShowingSide) {
+                if (!isShowingSide) {
                     mMoveSide = Gravity.BOTTOM;
                     moveBottomView(moveY);
 
@@ -313,8 +334,15 @@ public class SideslipLayout extends FrameLayout {
         if (mLeftViewItem == null)
             return;
 
-        if (mLeftViewItem.getLayout().getX() + mx <= 0)
+        if (mLeftViewItem.getLayout().getX() + mx <= 0) {
+            Log.e(TAG, "moveLeftView: " + mx);
             mLeftViewItem.getLayout().setX(mLeftViewItem.getLayout().getX() + mx);
+            //计算移动的位置所占的比例
+            //菜单完全不可见的x坐标 减去 当前x坐标就是变化值，再求百分比就可以了
+            float change = Math.abs((-mWidth * mLeftViewItem.getScale()) - mLeftViewItem.getLayout().getX());
+            float p = change / (mWidth * mLeftViewItem.getScale());
+            setShadeViewAlpha(p);
+        }
     }
 
     /**
@@ -326,8 +354,14 @@ public class SideslipLayout extends FrameLayout {
         if (mTopViewItem == null)
             return;
 
-        if (mTopViewItem.getLayout().getY() + my <= 0)
+        if (mTopViewItem.getLayout().getY() + my <= 0) {
             mTopViewItem.getLayout().setY(mTopViewItem.getLayout().getY() + my);
+            //计算移动的位置所占的比例
+            //菜单完全不可见的x坐标 减去 当前x坐标就是变化值，再求百分比就可以了
+            float change = Math.abs((-mHeight * mTopViewItem.getScale()) - mTopViewItem.getLayout().getY());
+            float p = change / (mHeight * mTopViewItem.getScale());
+            setShadeViewAlpha(p);
+        }
     }
 
     /**
@@ -338,8 +372,14 @@ public class SideslipLayout extends FrameLayout {
     private void moveRightView(float mx) {
         if (mRightViewItem == null)
             return;
-        if (mRightViewItem.getLayout().getX() + mx >= (1 - mRightViewItem.getScale()) * mWidth)
+        if (mRightViewItem.getLayout().getX() + mx >= (1 - mRightViewItem.getScale()) * mWidth) {
             mRightViewItem.getLayout().setX(mRightViewItem.getLayout().getX() + mx);
+            //计算移动的位置所占的比例
+            //菜单完全不可见的x坐标 减去 当前x坐标就是变化值，再求百分比就可以了
+            float change = Math.abs((mWidth) - mRightViewItem.getLayout().getX());
+            float p = change / (mWidth * mRightViewItem.getScale());
+            setShadeViewAlpha(p);
+        }
     }
 
     /**
@@ -351,8 +391,14 @@ public class SideslipLayout extends FrameLayout {
         if (mBottomViewItem == null)
             return;
 
-        if (mBottomViewItem.getLayout().getY() + my >= (1 - mBottomViewItem.getScale()) * mHeight)
+        if (mBottomViewItem.getLayout().getY() + my >= (1 - mBottomViewItem.getScale()) * mHeight) {
             mBottomViewItem.getLayout().setY(mBottomViewItem.getLayout().getY() + my);
+            //计算移动的位置所占的比例
+            //菜单完全不可见的y坐标 减去 当前y坐标就是变化值，再求百分比就可以了
+            float change = Math.abs((mHeight) - mBottomViewItem.getLayout().getY());
+            float p = change / (mHeight * mBottomViewItem.getScale());
+            setShadeViewAlpha(p);
+        }
     }
 
     private long touchDownTime; //手指按下时的时间
@@ -378,7 +424,7 @@ public class SideslipLayout extends FrameLayout {
             }
             case Gravity.RIGHT: {
                 speed = (x - mTouchStartX) / time;
-                if (speed < 1)
+                if (speed < -1)
                     return true;
                 break;
             }
@@ -390,11 +436,15 @@ public class SideslipLayout extends FrameLayout {
             }
             case Gravity.BOTTOM: {
                 speed = (y - mTouchStartY) / time;
-                if (speed < 1)
+                if (speed < -1)
                     return true;
                 break;
             }
         }
+
+        //手指滑动超过半个屏幕也可以启动动画
+        if ((x - mTouchStartX) > mWidth / 2 || (y - mTouchStartY) > mHeight / 2)
+            return true;
 
         return false;
     }
@@ -404,11 +454,9 @@ public class SideslipLayout extends FrameLayout {
      * 执行view动画
      * 在手指抬起的时候执行
      *
-     * @param x
-     * @param y
      * @param gravity //执行动画的侧边
      */
-    private void animateShowSideView(float x, float y, int gravity) {
+    private void animateShowSideView(int gravity) {
         float startVal = 0;
         float endVal = 0;
         switch (gravity) {
@@ -448,10 +496,10 @@ public class SideslipLayout extends FrameLayout {
         /**
          * 主界面滑动
          */
-        BounceInterpolator bounceInterpolator = new BounceInterpolator();  //弹簧效果
+        DecelerateInterpolator interpolator = new DecelerateInterpolator();  //插值器
 
         final ObjectAnimator animate = ObjectAnimator.ofFloat(this, "sideslip", startVal, endVal);
-        animate.setInterpolator(bounceInterpolator);
+        animate.setInterpolator(interpolator);
         animate.setDuration(mAnimateTime);
         animate.start();
         animate.addUpdateListener(updateListener);
@@ -507,7 +555,7 @@ public class SideslipLayout extends FrameLayout {
         /**
          * 主界面滑动
          */
-        BounceInterpolator interpolator = new BounceInterpolator();  //弹簧效果
+        AccelerateInterpolator interpolator = new AccelerateInterpolator();  //弹簧效果
 
         final ObjectAnimator animate = ObjectAnimator.ofFloat(this, "sideslip", startVal, endVal);
         animate.setInterpolator(interpolator);
@@ -529,23 +577,27 @@ public class SideslipLayout extends FrameLayout {
 
             switch (mMoveSide) {
                 case Gravity.LEFT: {
-                    if (mLeftViewItem != null)
-                        mLeftViewItem.getLayout().setX(cVal);
+                    if (mLeftViewItem != null) {
+                        moveLeftView(cVal - mLeftViewItem.getLayout().getX());
+                    }
                     break;
                 }
                 case Gravity.TOP: {
                     if (mTopViewItem != null)
-                        mTopViewItem.getLayout().setY(cVal);
+                        moveTopView(cVal - mTopViewItem.getLayout().getY());
+
                     break;
                 }
                 case Gravity.RIGHT: {
                     if (mRightViewItem != null)
-                        mRightViewItem.getLayout().setX(cVal);
+                        moveRightView(cVal - mRightViewItem.getLayout().getX());
+
                     break;
                 }
                 case Gravity.BOTTOM: {
                     if (mBottomViewItem != null)
-                        mBottomViewItem.getLayout().setY(cVal);
+                        moveBottomView(cVal - mBottomViewItem.getLayout().getY());
+
                     break;
                 }
             }
@@ -578,6 +630,20 @@ public class SideslipLayout extends FrameLayout {
 
         }
     };
+
+    /**
+     * 设置阴影VIew背景颜色
+     *
+     * @param p 透明度 0-1
+     */
+    private void setShadeViewAlpha(float p) {
+        if (p < 0.1)
+            p = 0;
+        if (p > 0.9)
+            p = 1;
+
+        mShadeView.setAlpha(p);
+    }
 
     public View getHomeView() {
         return mHomeView;
