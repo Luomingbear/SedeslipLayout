@@ -262,7 +262,7 @@ public class SideslipLayout extends FrameLayout {
                 if (computeIsShowSide(event.getX(), event.getY()))
                     animateShowSideView(mMoveSide);
                 else
-                    animateHideSideView(event.getX(), event.getY(), mMoveSide);
+                    animateHideSideView(mMoveSide);
 
                 break;
             }
@@ -515,7 +515,7 @@ public class SideslipLayout extends FrameLayout {
      * @param y
      * @param gravity
      */
-    private void animateHideSideView(float x, float y, int gravity) {
+    private void animateHideSideView(int gravity) {
         float startVal = 0;
         float endVal = 0;
         switch (gravity) {
